@@ -1,0 +1,2 @@
+[workspace]
+members = ["rnet", "rnet-macros", "rnet-example", "rnet-gen"]
