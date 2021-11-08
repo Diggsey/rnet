@@ -44,8 +44,8 @@ macro_rules! define_tuple_impls {
             }
 
             unsafe impl<$($arg: ToNet),*> ToNet for ($($arg,)*) {
-                fn to_raw(self) -> Self::Raw {
-                    $name($($arg::to_raw(self.$n)),*)
+                fn into_raw(self) -> Self::Raw {
+                    $name($($arg::into_raw(self.$n)),*)
                 }
 
                 fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {

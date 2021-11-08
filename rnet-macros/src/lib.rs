@@ -266,10 +266,10 @@ fn derive_net_struct_impl(
             }
 
             unsafe impl #root::ToNet for #name {
-                fn to_raw(self) -> Self::Raw {
+                fn into_raw(self) -> Self::Raw {
                     #raw_name {
                         #(
-                            #field_name: #root::ToNet::to_raw(self.#field_name),
+                            #field_name: #root::ToNet::into_raw(self.#field_name),
                         )*
                     }
                 }

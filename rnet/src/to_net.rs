@@ -10,7 +10,7 @@ pub unsafe trait ToNet: Net + ToNetReturn {
         ..Self::DESC
     };
     #[doc(hidden)]
-    fn to_raw(self) -> Self::Raw;
+    fn into_raw(self) -> Self::Raw;
     #[doc(hidden)]
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str>;
 }
@@ -25,7 +25,7 @@ pub unsafe trait ToNetArg: Sized {
     fn to_owned(self) -> Self::Owned;
     #[doc(hidden)]
     fn to_owned_raw(self) -> <Self::Owned as Net>::Raw {
-        self.to_owned().to_raw()
+        self.to_owned().into_raw()
     }
 }
 
@@ -53,15 +53,11 @@ unsafe impl<T: ToNet> ToNetReturn for T {
     const RETURN_DESC: TypeDesc = T::TO_DESC;
     type RawReturn = <Self as Net>::Raw;
     fn to_raw_return(self) -> Self::RawReturn {
-        let raw = self.to_raw();
+        let raw = self.into_raw();
 
         // Transmute necessary because rustc can't figure out that the
         // types are the same...
-        unsafe {
-            let res = std::mem::transmute_copy(&raw);
-            std::mem::forget(raw);
-            res
-        }
+        unsafe { std::mem::transmute_copy(&raw) }
     }
 }
 

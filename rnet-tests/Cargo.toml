@@ -1,0 +1,16 @@
+[package]
+name = "rnet-tests"
+version = "0.1.0"
+edition = "2018"
+readme = "../README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Diggsey/rnet"
+description = "Tests for rnet."
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+rnet = { version = "0.1.0", path = "../rnet" }
+linkme = "0.2.7"

@@ -35,9 +35,9 @@ macro_rules! defer_net {
             }
         }
         unsafe impl $($generics_to)* ToNet for $a {
-            fn to_raw(self) -> Self::Raw {
+            fn into_raw(self) -> Self::Raw {
                 let $e = self;
-                <$b as ToNet>::to_raw($f)
+                <$b as ToNet>::into_raw($f)
             }
 
             fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {

@@ -80,12 +80,33 @@ impl Display for NetException {
 
 impl Error for NetException {}
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
+/// Must be called by the `cdylib` crate.
+#[macro_export]
+macro_rules! root {
+    () => {
+        const _: () = {
+            #[doc(hidden)]
+            #[no_mangle]
+            pub extern "C" fn rnet_reflect(
+                version: usize,
+                desc: &mut $crate::hidden::LibDesc,
+            ) -> bool {
+                $crate::hidden::rnet_reflect(version, desc)
+            }
+
+            #[doc(hidden)]
+            #[no_mangle]
+            pub unsafe extern "C" fn rnet_alloc(size: usize, align: usize) -> *mut u8 {
+                $crate::hidden::rnet_alloc(size, align)
+            }
+
+            #[doc(hidden)]
+            #[no_mangle]
+            pub unsafe extern "C" fn rnet_free(ptr: *mut u8, size: usize, align: usize) {
+                $crate::hidden::rnet_free(ptr, size, align)
+            }
+        };
+    };
 }
 
 #[doc(hidden)]
@@ -108,8 +129,8 @@ pub mod hidden {
 
     pub const VERSION: usize = 1;
 
-    #[no_mangle]
-    pub extern "C" fn rnet_reflect(version: usize, desc: &mut LibDesc) -> bool {
+    #[doc(hidden)]
+    pub fn rnet_reflect(version: usize, desc: &mut LibDesc) -> bool {
         if version == VERSION {
             *desc = LibDesc {
                 fns: &EXPORTED_FNS,
@@ -121,13 +142,13 @@ pub mod hidden {
         }
     }
 
-    #[no_mangle]
-    pub unsafe extern "C" fn rnet_alloc(size: usize, align: usize) -> *mut u8 {
+    #[doc(hidden)]
+    pub unsafe fn rnet_alloc(size: usize, align: usize) -> *mut u8 {
         alloc(Layout::from_size_align_unchecked(size, align))
     }
 
-    #[no_mangle]
-    pub unsafe extern "C" fn rnet_free(ptr: *mut u8, size: usize, align: usize) {
+    #[doc(hidden)]
+    pub unsafe fn rnet_free(ptr: *mut u8, size: usize, align: usize) {
         dealloc(ptr, Layout::from_size_align_unchecked(size, align))
     }
 }

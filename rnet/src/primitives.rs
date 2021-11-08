@@ -28,7 +28,7 @@ macro_rules! define_primitives {
             }
 
             unsafe impl ToNet for $a {
-                fn to_raw(self) -> Self::Raw {
+                fn into_raw(self) -> Self::Raw {
                     self
                 }
                 fn gen_marshal(_ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
@@ -78,7 +78,7 @@ unsafe impl FromNet for bool {
 }
 
 unsafe impl ToNet for bool {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         self
     }
 

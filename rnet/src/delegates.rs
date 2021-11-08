@@ -9,7 +9,7 @@ impl Delegate {
     unsafe fn ptr<T>(&self) -> T {
         std::mem::transmute_copy(&self.0.call_fn)
     }
-    fn to_raw(self) -> RawDelegate {
+    fn into_raw(self) -> RawDelegate {
         let raw = self.0;
         std::mem::forget(self);
         raw
@@ -20,7 +20,7 @@ impl Clone for Delegate {
     fn clone(&self) -> Self {
         // Increment reference count
         (self.0.manage_fn.unwrap())(self.0.call_fn, 1);
-        Self(self.0.clone())
+        Self(self.0)
     }
 }
 
@@ -46,6 +46,7 @@ macro_rules! define_delegates {
             }
             impl<TR: FromNetReturn $(, $arg: ToNet)*> $name<TR $(, $arg)*> {
                 /// Calls the contained delegate.
+                #[allow(clippy::too_many_arguments)]
                 pub fn call(&self $(, $argname: impl ToNetArg<Owned = $arg>)*) -> TR {
                     unsafe {
                         TR::from_raw_return(self.0.ptr::<fn($($arg::Raw),*) -> TR::RawReturn>()(
@@ -132,8 +133,8 @@ macro_rules! define_delegates {
                 }
             }
             unsafe impl<TR: FromNetReturn $(, $arg: ToNet)*> ToNet for $name<TR $(, $arg)*> {
-                fn to_raw(self) -> Self::Raw {
-                    self.0.to_raw()
+                fn into_raw(self) -> Self::Raw {
+                    self.0.into_raw()
                 }
                 fn gen_marshal(_ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
                     format!("({})_FreeDelegate({})", Self::gen_type(), arg).into()

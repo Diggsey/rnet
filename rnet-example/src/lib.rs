@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use rnet::{net, Delegate0, Delegate1, Net};
 
+rnet::root!();
+
 #[derive(Net)]
 pub struct Foo {
     field0: String,

@@ -61,16 +61,12 @@ unsafe impl<T: FromNet> FromNet for Box<[T]> {
 }
 
 unsafe impl<T: ToNet> ToNet for Box<[T]> {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         let len = self.len();
         let ptr = if T::TRIVIAL {
             Box::into_raw(self) as *mut _
         } else {
-            let boxed_slice: Box<[T::Raw]> = self
-                .into_vec()
-                .into_iter()
-                .map(|item| T::to_raw(item))
-                .collect();
+            let boxed_slice: Box<[T::Raw]> = self.into_vec().into_iter().map(T::into_raw).collect();
             Box::into_raw(boxed_slice) as *mut _
         };
         RawSlice { ptr, len }
@@ -115,8 +111,8 @@ unsafe impl FromNet for Box<str> {
 }
 
 unsafe impl ToNet for Box<str> {
-    fn to_raw(self) -> Self::Raw {
-        <Box<[u8]> as ToNet>::to_raw(self.into_boxed_bytes())
+    fn into_raw(self) -> Self::Raw {
+        <Box<[u8]> as ToNet>::into_raw(self.into_boxed_bytes())
     }
 
     fn gen_marshal(_ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
@@ -153,7 +149,7 @@ unsafe impl<T: FromNet> FromNet for Box<T> {
 }
 
 unsafe impl<T: ToNet> ToNet for Box<T> {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         RawPtr(Box::into_raw(self) as *mut ())
     }
 
@@ -193,7 +189,7 @@ unsafe impl<T: Send + Sync + 'static> FromNet for Arc<T> {
 }
 
 unsafe impl<T: Send + Sync + 'static> ToNet for Arc<T> {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         unsafe extern "C" fn rnet_drop_arc<T>(ptr: *mut ()) {
             Arc::from_raw(ptr as *const T);
         }
@@ -244,9 +240,9 @@ unsafe impl<T: FromNet> FromNet for Option<T> {
 }
 
 unsafe impl<T: ToNet> ToNet for Option<T> {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         if let Some(v) = self {
-            RawTuple2(v.to_raw(), true)
+            RawTuple2(v.into_raw(), true)
         } else {
             RawTuple2(Default::default(), false)
         }
@@ -290,8 +286,8 @@ unsafe impl<T: ToNet, E: Display> ToNetReturn for Result<T, E> {
 
     fn to_raw_return(self) -> Self::RawReturn {
         match self {
-            Ok(x) => RawTuple3(x.to_raw(), Default::default(), true),
-            Err(e) => RawTuple3(Default::default(), e.to_string().to_raw(), false),
+            Ok(x) => RawTuple3(x.into_raw(), Default::default(), true),
+            Err(e) => RawTuple3(Default::default(), e.to_string().into_raw(), false),
         }
     }
 }
@@ -310,7 +306,7 @@ unsafe impl<E: Display> ToNetReturn for Result<(), E> {
     fn to_raw_return(self) -> Self::RawReturn {
         match self {
             Ok(()) => RawTuple2(Default::default(), true),
-            Err(e) => RawTuple2(e.to_string().to_raw(), false),
+            Err(e) => RawTuple2(e.to_string().into_raw(), false),
         }
     }
 }
@@ -404,13 +400,11 @@ unsafe impl<K: FromNet + Eq + Hash, V: FromNet> FromNet for HashMap<K, V> {
 }
 
 unsafe impl<K: ToNet + Eq + Hash, V: ToNet> ToNet for HashMap<K, V> {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         let len = self.len();
         let ptr = {
-            let boxed_slice: Box<[<(K, V) as Net>::Raw]> = self
-                .into_iter()
-                .map(|item| <(K, V)>::to_raw(item))
-                .collect();
+            let boxed_slice: Box<[<(K, V) as Net>::Raw]> =
+                self.into_iter().map(<(K, V)>::into_raw).collect();
             Box::into_raw(boxed_slice) as *mut _
         };
         RawSlice { ptr, len }
@@ -481,13 +475,11 @@ unsafe impl<K: FromNet + Ord, V: FromNet> FromNet for BTreeMap<K, V> {
 }
 
 unsafe impl<K: ToNet + Ord, V: ToNet> ToNet for BTreeMap<K, V> {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         let len = self.len();
         let ptr = {
-            let boxed_slice: Box<[<(K, V) as Net>::Raw]> = self
-                .into_iter()
-                .map(|item| <(K, V)>::to_raw(item))
-                .collect();
+            let boxed_slice: Box<[<(K, V) as Net>::Raw]> =
+                self.into_iter().map(<(K, V)>::into_raw).collect();
             Box::into_raw(boxed_slice) as *mut _
         };
         RawSlice { ptr, len }
@@ -551,10 +543,10 @@ unsafe impl<T: FromNet + Eq + Hash> FromNet for HashSet<T> {
 }
 
 unsafe impl<T: ToNet + Eq + Hash> ToNet for HashSet<T> {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         let len = self.len();
         let ptr = {
-            let boxed_slice: Box<[T::Raw]> = self.into_iter().map(|item| T::to_raw(item)).collect();
+            let boxed_slice: Box<[T::Raw]> = self.into_iter().map(T::into_raw).collect();
             Box::into_raw(boxed_slice) as *mut _
         };
         RawSlice { ptr, len }
@@ -616,10 +608,10 @@ unsafe impl<T: FromNet + Ord> FromNet for BTreeSet<T> {
 }
 
 unsafe impl<T: ToNet + Ord> ToNet for BTreeSet<T> {
-    fn to_raw(self) -> Self::Raw {
+    fn into_raw(self) -> Self::Raw {
         let len = self.len();
         let ptr = {
-            let boxed_slice: Box<[T::Raw]> = self.into_iter().map(|item| T::to_raw(item)).collect();
+            let boxed_slice: Box<[T::Raw]> = self.into_iter().map(T::into_raw).collect();
             Box::into_raw(boxed_slice) as *mut _
         };
         RawSlice { ptr, len }
