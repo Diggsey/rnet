@@ -93,8 +93,8 @@ fn net_impl(attr: TokenStream, item: TokenStream) -> Result<TokenStream2> {
     let _args = parse_attribute_args.parse(attr)?;
     let mut inner_fn = MaybeItemFn::parse.parse(item)?;
 
-    let fn_name = inner_fn.sig.ident;
-    let fn_name_str = fn_name.to_string();
+    let fn_name_str = inner_fn.sig.ident.to_string();
+    let fn_name = format_ident!("rnet_export_{}", fn_name_str);
     inner_fn.sig.ident = Ident::new("inner", Span::call_site());
 
     let args = inner_fn
@@ -207,10 +207,10 @@ fn derive_net_struct_impl(
                 fields: &[#(
                     #root::FieldDesc {
                         name: #field_name_str,
-                        ty_: #root::TypeDesc {
+                        ty_: &#root::TypeDesc {
                             marshal_in: Some(<#field_type as #root::FromNet>::gen_marshal),
                             marshal_out: Some(<#field_type as #root::ToNet>::gen_marshal),
-                            ..<#field_type as #root::Net>::DESC
+                            ..*<#field_type as #root::Net>::DESC
                         },
                     }
                 ),*],
@@ -242,11 +242,11 @@ fn derive_net_struct_impl(
             unsafe impl #root::Net for #name {
                 type Raw = #raw_name;
 
-                fn gen_type() -> Box<str> {
+                fn gen_type(_ctx: &mut #root::GeneratorContext) -> Box<str> {
                     #name_str.into()
                 }
 
-                fn gen_raw_type() -> Box<str> {
+                fn gen_raw_type(_ctx: &mut #root::GeneratorContext) -> Box<str> {
                     #raw_name_str.into()
                 }
             }
@@ -260,8 +260,8 @@ fn derive_net_struct_impl(
                     }
                 }
 
-                fn gen_marshal(_ctx: &mut #root::GeneratorContext, arg: &str) -> Box<str> {
-                    format!("{}.Encode({})", Self::gen_raw_type(), arg).into()
+                fn gen_marshal(ctx: &mut #root::GeneratorContext, arg: &str) -> Box<str> {
+                    format!("{}.Encode({})", Self::gen_raw_type(ctx), arg).into()
                 }
             }
 

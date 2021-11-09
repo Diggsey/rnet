@@ -58,19 +58,19 @@ macro_rules! define_delegates {
             unsafe impl<TR: FromNetReturn $(, $arg: ToNet)*> Net for $name<TR $(, $arg)*> {
                 type Raw = RawDelegate;
 
-                fn gen_type() -> Box<str> {
-                    if let Some(base_ty) = (TR::RETURN_DESC.base_ty)() {
+                fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+                    if let Some(base_ty) = (TR::RETURN_DESC.base_ty)(ctx) {
                         if $lit.is_empty() {
                             format!("Func<{}>", base_ty)
                         } else {
-                            format!(concat!("Func<", $lit , ", {}>"), $($arg::gen_type(),)* base_ty)
+                            format!(concat!("Func<", $lit , ", {}>"), $($arg::gen_type(ctx),)* base_ty)
                         }
                     } else {
-                        format!(concat!("Action<", $lit , ">"), $($arg::gen_type(),)*)
+                        format!(concat!("Action<", $lit , ">"), $($arg::gen_type(ctx),)*)
                     }.into()
                 }
 
-                fn gen_raw_type() -> Box<str> {
+                fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
                     "_RawDelegate".into()
                 }
             }
@@ -80,7 +80,7 @@ macro_rules! define_delegates {
                 }
 
                 fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
-                    let ty_ = Self::gen_type();
+                    let ty_ = Self::gen_type(ctx);
                     let new_arg = ctx.get_unique_identifier("_arg");
                     let arg_names = format!(
                         $lit,
@@ -99,7 +99,7 @@ macro_rules! define_delegates {
                         new_arg,
                         arg_marshal
                     );
-                    let raw_ret_ty = if let Some(raw_ret_ty) = (TR::RETURN_DESC.raw_ty)() {
+                    let raw_ret_ty = if let Some(raw_ret_ty) = (TR::RETURN_DESC.raw_ty)(ctx) {
                         raw_ret_ty
                     } else {
                         "void".into()
@@ -107,7 +107,7 @@ macro_rules! define_delegates {
                     let fn_body = (TR::RETURN_DESC.marshal_in.unwrap())(ctx, &call_code);
 
                     let local_delegate_name = ctx.get_unique_identifier("_LocalDelegate");
-                    ctx.add_item(&format!(
+                    let extra_item = format!(
                         concat!(
                             "[UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate {} {}(",
                                 $lit,
@@ -115,8 +115,9 @@ macro_rules! define_delegates {
                         ),
                         raw_ret_ty,
                         local_delegate_name,
-                        $(format!(concat!("{} ", stringify!($argname)), $arg::gen_raw_type()),)*
-                    ));
+                        $(format!(concat!("{} ", stringify!($argname)), $arg::gen_raw_type(ctx)),)*
+                    );
+                    ctx.add_item(&extra_item);
 
                     format!(
                         concat!(
@@ -136,8 +137,8 @@ macro_rules! define_delegates {
                 fn into_raw(self) -> Self::Raw {
                     self.0.into_raw()
                 }
-                fn gen_marshal(_ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
-                    format!("({})_FreeDelegate({})", Self::gen_type(), arg).into()
+                fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
+                    format!("({})_FreeDelegate({})", Self::gen_type(ctx), arg).into()
                 }
             }
         )*

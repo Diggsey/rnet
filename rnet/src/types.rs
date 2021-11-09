@@ -48,9 +48,9 @@ impl Default for RawOpaqueHandle {
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub struct TypeDesc {
-    pub net_ty: fn() -> Option<Box<str>>,
-    pub base_ty: fn() -> Option<Box<str>>,
-    pub raw_ty: fn() -> Option<Box<str>>,
+    pub net_ty: fn(&mut GeneratorContext) -> Option<Box<str>>,
+    pub base_ty: fn(&mut GeneratorContext) -> Option<Box<str>>,
+    pub raw_ty: fn(&mut GeneratorContext) -> Option<Box<str>>,
     pub marshal_in: Option<fn(&mut GeneratorContext, &str) -> Box<str>>,
     pub marshal_out: Option<fn(&mut GeneratorContext, &str) -> Box<str>>,
 }
@@ -60,7 +60,7 @@ pub struct TypeDesc {
 #[repr(C)]
 pub struct ArgDesc {
     pub name: &'static str,
-    pub ty_: TypeDesc,
+    pub ty_: &'static TypeDesc,
 }
 
 #[doc(hidden)]
@@ -69,7 +69,7 @@ pub struct ArgDesc {
 pub struct FnDesc {
     pub name: &'static str,
     pub args: &'static [ArgDesc],
-    pub ret_ty: TypeDesc,
+    pub ret_ty: &'static TypeDesc,
 }
 
 #[doc(hidden)]
@@ -77,7 +77,7 @@ pub struct FnDesc {
 #[repr(C)]
 pub struct FieldDesc {
     pub name: &'static str,
-    pub ty_: TypeDesc,
+    pub ty_: &'static TypeDesc,
 }
 
 #[doc(hidden)]
@@ -116,22 +116,36 @@ impl Default for RawDelegate {
 #[repr(C)]
 pub struct GeneratorContext<'a> {
     counter: u32,
-    data: *mut (),
+    add_item_data: *mut (),
     add_item: fn(*mut (), item: &str),
+    add_tuple_data: *mut (),
+    add_tuple: fn(*mut (), elems: &[Box<str>]) -> Box<str>,
     phantom: PhantomData<&'a ()>,
 }
 
 impl<'a> GeneratorContext<'a> {
     #[doc(hidden)]
-    pub fn new<F: FnMut(&str)>(add_item: &'a mut F) -> Self {
+    pub fn new<F: FnMut(&str), G: FnMut(&[Box<str>]) -> Box<str>>(
+        add_item: &'a mut F,
+        add_tuple: &'a mut G,
+    ) -> Self {
         fn add_item_thunk<F: FnMut(&str)>(ptr: *mut (), item: &str) {
             let f = unsafe { &mut *(ptr as *mut F) };
             f(item);
         }
+        fn add_tuple_thunk<G: FnMut(&[Box<str>]) -> Box<str>>(
+            ptr: *mut (),
+            elems: &[Box<str>],
+        ) -> Box<str> {
+            let g = unsafe { &mut *(ptr as *mut G) };
+            g(elems)
+        }
         Self {
             counter: 0,
-            data: add_item as *mut F as *mut (),
+            add_item_data: add_item as *mut F as *mut (),
             add_item: add_item_thunk::<F>,
+            add_tuple_data: add_tuple as *mut G as *mut (),
+            add_tuple: add_tuple_thunk::<G>,
             phantom: PhantomData,
         }
     }
@@ -142,6 +156,10 @@ impl<'a> GeneratorContext<'a> {
     }
     #[doc(hidden)]
     pub fn add_item(&mut self, item: &str) {
-        (self.add_item)(self.data, item)
+        (self.add_item)(self.add_item_data, item)
+    }
+    #[doc(hidden)]
+    pub fn add_tuple(&mut self, elems: &[Box<str>]) -> Box<str> {
+        (self.add_tuple)(self.add_tuple_data, elems)
     }
 }

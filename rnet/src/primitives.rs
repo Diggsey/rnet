@@ -8,11 +8,11 @@ macro_rules! define_primitives {
                 type Raw = $a;
                 const TRIVIAL: bool = true;
 
-                fn gen_type() -> Box<str> {
+                fn gen_type(_ctx: &mut GeneratorContext) -> Box<str> {
                     $b.into()
                 }
 
-                fn gen_raw_type() -> Box<str> {
+                fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
                     $b.into()
                 }
             }
@@ -58,11 +58,11 @@ unsafe impl Net for bool {
     type Raw = bool;
     const TRIVIAL: bool = true;
 
-    fn gen_type() -> Box<str> {
+    fn gen_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "bool".into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "byte".into()
     }
 }

@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     ffi::OsStr,
     io::{stdout, BufWriter, Write},
     path::PathBuf,
@@ -36,8 +37,21 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
     let suffix = parts.next().unwrap();
 
     let mut extra_items = Vec::new();
+    let mut used_tuple_keys = HashMap::new();
+    let mut used_tuples = Vec::new();
     let mut add_item = |item: &str| extra_items.push(item.to_owned());
-    let mut ctx = GeneratorContext::new(&mut add_item);
+    let mut add_tuple = |elems: &[Box<str>]| {
+        used_tuple_keys
+            .entry(elems.to_vec())
+            .or_insert_with(|| {
+                let name = format!("_RawTuple{}", used_tuples.len());
+                used_tuples.push((elems.to_vec(), name.clone()));
+                name
+            })
+            .clone()
+            .into()
+    };
+    let mut ctx = GeneratorContext::new(&mut add_item, &mut add_tuple);
 
     writeln!(writer, "{}", prefix)?;
 
@@ -45,7 +59,7 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
     for struct_desc in desc.structs {
         writeln!(writer, "        public struct {} {{", struct_desc.name)?;
         for field_desc in struct_desc.fields {
-            let net_ty = (field_desc.ty_.net_ty)().unwrap();
+            let net_ty = (field_desc.ty_.net_ty)(&mut ctx).unwrap();
             writeln!(
                 writer,
                 "            public {} {};",
@@ -58,7 +72,7 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
 
     // Write wrappers
     for fn_desc in desc.fns {
-        let ret_net_ty = (fn_desc.ret_ty.net_ty)();
+        let ret_net_ty = (fn_desc.ret_ty.net_ty)(&mut ctx);
         writeln!(
             writer,
             "        public static {} {}(",
@@ -73,7 +87,7 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
             writeln!(
                 writer,
                 "            {} {}{}",
-                (arg.ty_.base_ty)().unwrap(),
+                (arg.ty_.base_ty)(&mut ctx).unwrap(),
                 arg.name.to_mixed_case(),
                 if i + 1 == fn_desc.args.len() { "" } else { "," }
             )?;
@@ -113,7 +127,7 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
             struct_desc.name
         )?;
         for field_desc in struct_desc.fields {
-            let raw_ty = (field_desc.ty_.raw_ty)().unwrap();
+            let raw_ty = (field_desc.ty_.raw_ty)(&mut ctx).unwrap();
             writeln!(
                 writer,
                 "            public {} {};",
@@ -184,12 +198,12 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
         writeln!(
             writer,
             "        [DllImport({:?}, EntryPoint = {:?}, CallingConvention = CallingConvention.Cdecl)]",
-            name, fn_desc.name
+            name, format!("rnet_export_{}", fn_desc.name)
         )?;
         writeln!(
             writer,
             "        private static extern {} _Fn{}(",
-            if let Some(ret_ty) = (maybe_ret_ty.raw_ty)() {
+            if let Some(ret_ty) = (maybe_ret_ty.raw_ty)(&mut ctx) {
                 ret_ty
             } else {
                 "void".into()
@@ -200,7 +214,7 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
             writeln!(
                 writer,
                 "            {} {}{}",
-                (arg.ty_.raw_ty)().unwrap(),
+                (arg.ty_.raw_ty)(&mut ctx).unwrap(),
                 arg.name.to_mixed_case(),
                 if i + 1 == fn_desc.args.len() { "" } else { "," }
             )?;
@@ -211,6 +225,107 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
     // Add extra items
     for item in extra_items {
         writeln!(writer, "        {}", item)?;
+    }
+
+    // Add used tuples
+    for (k, v) in used_tuples {
+        let k: Vec<_> = k.iter().map(|k| &**k).collect();
+
+        // Generate raw tuple struct
+        writeln!(writer, "        [StructLayout(LayoutKind.Sequential)]")?;
+        writeln!(writer, "        private struct {} {{", v)?;
+        for (i, elem) in k.iter().enumerate() {
+            writeln!(writer, "            public {} elem{};", elem, i)?;
+        }
+        writeln!(writer, "        }}")?;
+
+        // Generate helpers for tuple
+        if let [x, "byte"] = *k.as_slice() {
+            writeln!(writer, "        private static {} _EncodeOption<T>(T? arg, Func<T, {}> converter) where T: struct {{", v, x)?;
+            writeln!(writer, "            if (arg.HasValue) {{")?;
+            writeln!(
+                writer,
+                "                return new {} {{ elem0 = converter(arg.Value), elem1 = 1 }};",
+                v
+            )?;
+            writeln!(writer, "            }} else {{")?;
+            writeln!(
+                writer,
+                "                return new {} {{ elem0 = default({}), elem1 = 0 }};",
+                v, x
+            )?;
+            writeln!(writer, "            }}")?;
+            writeln!(writer, "        }}")?;
+            writeln!(writer, "        private static T? _DecodeOption<T>({} arg, Func<{}, T> converter) where T: struct {{", v, x)?;
+            writeln!(writer, "            if (arg.elem1 != 0) {{")?;
+            writeln!(writer, "                return converter(arg.elem0);")?;
+            writeln!(writer, "            }} else {{")?;
+            writeln!(writer, "                return null;")?;
+            writeln!(writer, "            }}")?;
+            writeln!(writer, "        }}")?;
+        }
+        if let [x, "_RawSlice", "byte"] = *k.as_slice() {
+            writeln!(
+                writer,
+                "        private static {} _EncodeResult(Func<{}> f) {{",
+                v, x
+            )?;
+            writeln!(writer, "            try {{")?;
+            writeln!(writer, "                var res = f();")?;
+            writeln!(writer, "                return new {} {{ elem0 = res, elem1 = default(_RawSlice), elem2 = 1 }};", v)?;
+            writeln!(writer, "            }} catch (Exception e) {{")?;
+            writeln!(writer, "                return new {} {{ elem0 = default({}), elem1 = _AllocStr(e.Message), elem2 = 0 }};", v, x)?;
+            writeln!(writer, "            }}")?;
+            writeln!(writer, "        }}")?;
+            writeln!(
+                writer,
+                "        private static T _DecodeResult<T>({} arg, Func<{}, T> converter) {{",
+                v, x
+            )?;
+            writeln!(writer, "            if (arg.elem2 != 0) {{")?;
+            writeln!(writer, "                return converter(arg.elem0);")?;
+            writeln!(writer, "            }} else {{")?;
+            writeln!(
+                writer,
+                "                throw new RustException(_FreeStr(arg.elem1));"
+            )?;
+            writeln!(writer, "            }}")?;
+            writeln!(writer, "        }}")?;
+        }
+        if let ["_RawSlice", "byte"] = *k.as_slice() {
+            writeln!(
+                writer,
+                "        private static {} _EncodeResult(Action f) {{",
+                v
+            )?;
+            writeln!(writer, "            try {{")?;
+            writeln!(writer, "                f();")?;
+            writeln!(
+                writer,
+                "                return new {} {{ elem0 = default(_RawSlice), elem1 = 1 }};",
+                v
+            )?;
+            writeln!(writer, "            }} catch (Exception e) {{")?;
+            writeln!(
+                writer,
+                "                return new {} {{ elem0 = _AllocStr(e.Message), elem1 = 0 }};",
+                v
+            )?;
+            writeln!(writer, "            }}")?;
+            writeln!(writer, "        }}")?;
+            writeln!(
+                writer,
+                "        private static void _DecodeResult({} arg) {{",
+                v
+            )?;
+            writeln!(writer, "            if (arg.elem1 == 0) {{")?;
+            writeln!(
+                writer,
+                "                throw new RustException(_FreeStr(arg.elem0));"
+            )?;
+            writeln!(writer, "            }}")?;
+            writeln!(writer, "        }}")?;
+        }
     }
 
     writeln!(writer, "{}", suffix)?;

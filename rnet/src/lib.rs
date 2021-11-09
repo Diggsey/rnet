@@ -4,23 +4,25 @@
 //!
 //! ## Usage
 //!
-//! 1. Use `#[derive(Net)]` on any structs to be shared with .net.
-//! 2. Apply the `#[net]` attribute to any standalone functions
+//! 1. Add `rnet::root!();` to your crate.
+//! 2. Use `#[derive(Net)]` on any structs to be shared with .net.
+//! 3. Apply the `#[net]` attribute to any standalone functions
 //!    which should be callable from .net.
-//! 3. Build your rust project as a `cdylib`.
-//! 4. Generate C# bindings for your project:
+//! 4. Build your rust project as a `cdylib`.
+//! 5. Generate C# bindings for your project:
 //!    ```
 //!    cargo install rnet-gen
 //!    rnet-gen "<path to .dll/.so/.dylib>" > "<path to generated file.cs>"
 //!    ```
-//! 5. Include the C# file in your .net project.
-//! 6. Add a link to the compiled rust library to your .net project,
+//! 6. Include the C# file in your .net project.
+//! 7. Add a link to the compiled rust library to your .net project,
 //!    and set it to "Copy if newer".
-//! 7. Optional: Configure the above steps to run automatically as
+//! 8. Optional: Configure the above steps to run automatically as
 //!    pre-build steps.
 #![deny(missing_docs)]
 use std::{error::Error, fmt::Display};
 
+use hidden::GeneratorContext;
 pub use rnet_macros::{net, Net};
 use types::TypeDesc;
 
@@ -37,7 +39,7 @@ pub use delegates::*;
 pub use from_net::{FromNet, FromNetArg, FromNetReturn};
 pub use to_net::{ToNet, ToNetArg, ToNetReturn};
 
-fn none_ty() -> Option<Box<str>> {
+fn none_ty(_ctx: &mut GeneratorContext) -> Option<Box<str>> {
     None
 }
 
@@ -45,10 +47,10 @@ fn none_ty() -> Option<Box<str>> {
 /// an equivalent type within .net.
 pub unsafe trait Net: 'static {
     #[doc(hidden)]
-    const DESC: TypeDesc = TypeDesc {
-        net_ty: || Some(Self::gen_type()),
-        base_ty: || Some(Self::gen_base_type()),
-        raw_ty: || Some(Self::gen_raw_type()),
+    const DESC: &'static TypeDesc = &TypeDesc {
+        net_ty: |ctx| Some(Self::gen_type(ctx)),
+        base_ty: |ctx| Some(Self::gen_base_type(ctx)),
+        raw_ty: |ctx| Some(Self::gen_raw_type(ctx)),
         marshal_in: None,
         marshal_out: None,
     };
@@ -57,13 +59,13 @@ pub unsafe trait Net: 'static {
     #[doc(hidden)]
     type Raw: Default + Copy;
     #[doc(hidden)]
-    fn gen_type() -> Box<str>;
+    fn gen_type(ctx: &mut GeneratorContext) -> Box<str>;
     #[doc(hidden)]
-    fn gen_base_type() -> Box<str> {
-        Self::gen_type()
+    fn gen_base_type(ctx: &mut GeneratorContext) -> Box<str> {
+        Self::gen_type(ctx)
     }
     #[doc(hidden)]
-    fn gen_raw_type() -> Box<str>;
+    fn gen_raw_type(ctx: &mut GeneratorContext) -> Box<str>;
 }
 
 /// This error type can be used to capture exceptions from

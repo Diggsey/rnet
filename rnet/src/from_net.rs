@@ -8,9 +8,9 @@ use crate::{
 /// from .net code.
 pub unsafe trait FromNet: Net + for<'a> FromNetArg<'a> {
     #[doc(hidden)]
-    const FROM_DESC: TypeDesc = TypeDesc {
+    const FROM_DESC: &'static TypeDesc = &TypeDesc {
         marshal_in: Some(Self::gen_marshal),
-        ..Self::DESC
+        ..*Self::DESC
     };
     #[doc(hidden)]
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str>;
@@ -43,7 +43,7 @@ unsafe impl<'a, T: FromNet> FromNetArg<'a> for T {
 /// `void` cannot be used as a normal type.
 pub unsafe trait FromNetReturn: 'static {
     #[doc(hidden)]
-    const RETURN_DESC: TypeDesc;
+    const RETURN_DESC: &'static TypeDesc;
     #[doc(hidden)]
     type RawReturn;
     #[doc(hidden)]
@@ -51,7 +51,7 @@ pub unsafe trait FromNetReturn: 'static {
 }
 
 unsafe impl<T: FromNet> FromNetReturn for T {
-    const RETURN_DESC: TypeDesc = T::FROM_DESC;
+    const RETURN_DESC: &'static TypeDesc = T::FROM_DESC;
     type RawReturn = <Self as Net>::Raw;
     unsafe fn from_raw_return(arg: Self::RawReturn) -> Self {
         Self::from_raw(arg)
@@ -59,7 +59,7 @@ unsafe impl<T: FromNet> FromNetReturn for T {
 }
 
 unsafe impl FromNetReturn for () {
-    const RETURN_DESC: TypeDesc = TypeDesc {
+    const RETURN_DESC: &'static TypeDesc = &TypeDesc {
         net_ty: none_ty,
         base_ty: none_ty,
         raw_ty: none_ty,

@@ -12,16 +12,16 @@ macro_rules! defer_net {
         unsafe impl $($generics)* Net for $a {
             type Raw = <$b as Net>::Raw;
 
-            fn gen_type() -> Box<str> {
-                <$b as Net>::gen_type()
+            fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+                <$b as Net>::gen_type(ctx)
             }
 
-            fn gen_base_type() -> Box<str> {
-                <$b as Net>::gen_base_type()
+            fn gen_base_type(ctx: &mut GeneratorContext) -> Box<str> {
+                <$b as Net>::gen_base_type(ctx)
             }
 
-            fn gen_raw_type() -> Box<str> {
-                <$b as Net>::gen_raw_type()
+            fn gen_raw_type(ctx: &mut GeneratorContext) -> Box<str> {
+                <$b as Net>::gen_raw_type(ctx)
             }
         }
         unsafe impl $($generics_from)* FromNet for $a {

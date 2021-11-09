@@ -23,7 +23,7 @@ namespace RnetExample
         public static void Hello(
             String name
         ) {
-            _DecodeVoidResult(_FnHello(_AllocStr(name)));
+            _DecodeResult(_FnHello(_AllocStr(name)));
         }
         public static void HelloMany(
             IReadOnlyCollection<String> names
@@ -33,7 +33,7 @@ namespace RnetExample
         public static (bool,bool) IsEven(
             int value
         ) {
-            return ((Func<_RawTuple<byte,byte>, (bool,bool)>)(_arg2 => ((_arg2.elem0 != 0),(_arg2.elem1 != 0))))(_FnIsEven(value));
+            return ((Func<_RawTuple0, (bool,bool)>)(_arg2 => ((_arg2.elem0 != 0),(_arg2.elem1 != 0))))(_FnIsEven(value));
         }
         public static List<byte> StrToBytes(
             String value
@@ -61,7 +61,7 @@ namespace RnetExample
                     field0 = _AllocStr(structArg.field0),
                     field1 = _AllocSlice<bool, byte>(structArg.field1, 1, 1, _arg14 => (_arg14 ? (byte)1 : (byte)0)),
                     field2 = ((Func<Func<Foo, Foo>, _RawDelegate>)(_arg15 => _AllocDelegate(new _LocalDelegate16((_arg15_arg0) => _StructFoo.Encode(_arg15((_arg15_arg0).Decode()))), _arg15)))(structArg.field2),
-                    field3 = _AllocDict<String, bool, _RawSlice, byte>(structArg.field3, 24, 8, _arg17 => ((Func<(String,bool), _RawTuple<_RawSlice,byte>>)(_arg18 => new _RawTuple<_RawSlice,byte> { elem0 = _AllocStr(_arg18.Item1),elem1 = (_arg18.Item2 ? (byte)1 : (byte)0) }))(_arg17))
+                    field3 = _AllocDict<String, bool, _RawTuple1>(structArg.field3, 24, 8, _arg17 => ((Func<(String,bool), _RawTuple1>)(_arg18 => new _RawTuple1 { elem0 = _AllocStr(_arg18.Item1),elem1 = (_arg18.Item2 ? (byte)1 : (byte)0) }))(_arg17))
                 };
             }
             public Foo Decode() {
@@ -69,12 +69,12 @@ namespace RnetExample
                     field0 = _FreeStr(this.field0),
                     field1 = _FreeSlice<bool, byte, List<bool>>(this.field1, 1, 1, _arg19 => (_arg19 != 0)),
                     field2 = (Func<Foo, Foo>)_FreeDelegate(this.field2),
-                    field3 = _FreeDict<String, bool, _RawSlice, byte, Dictionary<String, bool>>(this.field3, 24, 8, _arg20 => ((Func<_RawTuple<_RawSlice,byte>, (String,bool)>)(_arg21 => (_FreeStr(_arg21.elem0),(_arg21.elem1 != 0))))(_arg20))
+                    field3 = _FreeDict<String, bool, _RawTuple1, Dictionary<String, bool>>(this.field3, 24, 8, _arg20 => ((Func<_RawTuple1, (String,bool)>)(_arg21 => (_FreeStr(_arg21.elem0),(_arg21.elem1 != 0))))(_arg20))
                 };
             }
         }
         [DllImport("rnet_example", EntryPoint = "hello", CallingConvention = CallingConvention.Cdecl)]
-        private static extern _RawTuple<_RawSlice, byte> _FnHello(
+        private static extern _RawTuple1 _FnHello(
             _RawSlice name
         );
         [DllImport("rnet_example", EntryPoint = "hello_many", CallingConvention = CallingConvention.Cdecl)]
@@ -82,7 +82,7 @@ namespace RnetExample
             _RawSlice names
         );
         [DllImport("rnet_example", EntryPoint = "is_even", CallingConvention = CallingConvention.Cdecl)]
-        private static extern _RawTuple<byte,byte> _FnIsEven(
+        private static extern _RawTuple0 _FnIsEven(
             int value
         );
         [DllImport("rnet_example", EntryPoint = "str_to_bytes", CallingConvention = CallingConvention.Cdecl)]
@@ -100,6 +100,57 @@ namespace RnetExample
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate _StructFoo _LocalDelegate5(byte arg0);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate _RawSlice _LocalDelegate10();
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)] delegate _StructFoo _LocalDelegate16(_StructFoo arg0);
+        [StructLayout(LayoutKind.Sequential)]
+        private struct _RawTuple0 {
+            public byte elem0;
+            public byte elem1;
+        }
+        private static _RawTuple0 _EncodeOption<T>(T? arg, Func<T, byte> converter) where T: struct {
+            if (arg.HasValue) {
+                return new _RawTuple0 { elem0 = converter(arg.Value), elem1 = 1 };
+            } else {
+                return new _RawTuple0 { elem0 = default(byte), elem1 = 0 };
+            }
+        }
+        private static T? _DecodeOption<T>(_RawTuple0 arg, Func<byte, T> converter) where T: struct {
+            if (arg.elem1 != 0) {
+                return converter(arg.elem0);
+            } else {
+                return null;
+            }
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        private struct _RawTuple1 {
+            public _RawSlice elem0;
+            public byte elem1;
+        }
+        private static _RawTuple1 _EncodeOption<T>(T? arg, Func<T, _RawSlice> converter) where T: struct {
+            if (arg.HasValue) {
+                return new _RawTuple1 { elem0 = converter(arg.Value), elem1 = 1 };
+            } else {
+                return new _RawTuple1 { elem0 = default(_RawSlice), elem1 = 0 };
+            }
+        }
+        private static T? _DecodeOption<T>(_RawTuple1 arg, Func<_RawSlice, T> converter) where T: struct {
+            if (arg.elem1 != 0) {
+                return converter(arg.elem0);
+            } else {
+                return null;
+            }
+        }
+        private static _RawTuple1 _EncodeResult(Action f) {
+            try {
+                f();
+                return new _RawTuple1 { elem0 = default(_RawSlice), elem1 = 1 };
+            } catch (Exception e) {
+                return new _RawTuple1 { elem0 = _AllocStr(e.Message), elem1 = 0 };
+            }
+        }
+        private static void _DecodeResult(_RawTuple1 arg) {
+            if (arg.elem1 == 0) {
+                throw new RustException(_FreeStr(arg.elem0));
+            }
+        }
 
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -283,90 +334,6 @@ namespace RnetExample
             public IntPtr drop_fn;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1> where T0 : unmanaged where T1 : unmanaged
-        {
-            public T0 elem0;
-            public T1 elem1;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4, T5>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-            public T5 elem5;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4, T5, T6>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-            public T5 elem5;
-            public T6 elem6;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4, T5, T6, T7>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-            public T5 elem5;
-            public T6 elem6;
-            public T7 elem7;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4, T5, T6, T7, T8>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-            public T5 elem5;
-            public T6 elem6;
-            public T7 elem7;
-            public T8 elem8;
-        }
-
         private static IntPtr _AllocBox<T>(T arg, int size, int align)
         {
             if (size > 0) {
@@ -403,14 +370,14 @@ namespace RnetExample
             return slice;
         }
 
-        private static _RawSlice _AllocDict<TKey, TValue, UKey, UValue>(IReadOnlyDictionary<TKey, TValue> collection, int size, int align, Func<(TKey, TValue), _RawTuple<UKey, UValue>> converter) where UKey: unmanaged where UValue: unmanaged
+        private static _RawSlice _AllocDict<TKey, TValue, U>(IReadOnlyDictionary<TKey, TValue> collection, int size, int align, Func<(TKey, TValue), U> converter) where U: unmanaged
         {
             var count = collection.Count;
             var slice = _RawSlice.Alloc((UIntPtr)count, size, align);
             var ptr = slice.ptr;
             foreach (var item in collection)
             {
-                Marshal.StructureToPtr(converter((item.Key, item.Value)), ptr, false);
+                Marshal.StructureToPtr<U>(converter((item.Key, item.Value)), ptr, false);
                 ptr = (IntPtr)(ptr.ToInt64() + (long)size);
             }
             return slice;
@@ -450,7 +417,7 @@ namespace RnetExample
             }
         }
 
-        private static TDict _FreeDict<TKey, TValue, UKey, UValue, TDict>(_RawSlice arg, int size, int align, Func<_RawTuple<UKey, UValue>, (TKey, TValue)> converter) where UKey : unmanaged where UValue : unmanaged where TDict: IDictionary<TKey, TValue>, new()
+        private static TDict _FreeDict<TKey, TValue, U, TDict>(_RawSlice arg, int size, int align, Func<U, (TKey, TValue)> converter) where U : unmanaged where TDict: IDictionary<TKey, TValue>, new()
         {
             unsafe
             {
@@ -458,80 +425,12 @@ namespace RnetExample
                 var ptr = arg.ptr;
                 for (var i = 0; i < (int)arg.len; ++i)
                 {
-                    var item = converter(Marshal.PtrToStructure<_RawTuple<UKey, UValue>>(ptr));
+                    var item = converter(Marshal.PtrToStructure<U>(ptr));
                     res.Add(item.Item1, item.Item2);
                     ptr = (IntPtr)(ptr.ToInt64() + (long)size);
                 }
                 arg.Free(size, align);
                 return res;
-            }
-        }
-
-        private static _RawTuple<U, byte> _EncodeOption<T, U>(T? arg, Func<T, U> converter) where T: struct where U : unmanaged
-        {
-            if (arg.HasValue)
-            {
-                return new _RawTuple<U, byte> { elem0 = converter(arg.Value), elem1 = 1 };
-            } else
-            {
-                return new _RawTuple<U, byte> { elem0 = default(U), elem1 = 0 };
-            }
-        }
-
-        private static T? _DecodeOption<T, U>(_RawTuple<U, byte> arg, Func<U, T> converter) where T : struct where U : unmanaged
-        {
-            if (arg.elem1 != 0)
-            {
-                return converter(arg.elem0);
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        private static _RawTuple<U, _RawSlice, byte> _EncodeResult<U>(Func<U> f) where U : unmanaged
-        {
-            try
-            {
-                var res = f();
-                return new _RawTuple<U, _RawSlice, byte> { elem0 = res, elem1 = default(_RawSlice), elem2 = 1 };
-            } catch (Exception e)
-            {
-                return new _RawTuple<U, _RawSlice, byte> { elem0 = default(U), elem1 = _AllocStr(e.Message), elem2 = 0 };
-            }
-        }
-
-        private static _RawTuple<_RawSlice, byte> _EncodeVoidResult(Action f)
-        {
-            try
-            {
-                f();
-                return new _RawTuple<_RawSlice, byte> { elem0 = default(_RawSlice), elem1 = 1 };
-            }
-            catch (Exception e)
-            {
-                return new _RawTuple<_RawSlice, byte> { elem0 = _AllocStr(e.Message), elem1 = 0 };
-            }
-        }
-
-        private static T _DecodeResult<T, U>(_RawTuple<U, _RawSlice, byte> arg, Func<U, T> converter) where U : unmanaged
-        {
-            if (arg.elem2 != 0)
-            {
-                return converter(arg.elem0);
-            }
-            else
-            {
-                throw new RustException(_FreeStr(arg.elem1));
-            }
-        }
-
-        private static void _DecodeVoidResult(_RawTuple<_RawSlice, byte> arg)
-        {
-            if (arg.elem1 == 0)
-            {
-                throw new RustException(_FreeStr(arg.elem0));
             }
         }
     }

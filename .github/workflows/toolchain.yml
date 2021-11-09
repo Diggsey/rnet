@@ -54,8 +54,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
+        allow-fail: [false]
+        include:
+          - os: macos-latest
+            allow-fail: true
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.allow-fail }}
     steps:
       - uses: actions/checkout@v2.1.0
       - uses: actions/setup-dotnet@v1

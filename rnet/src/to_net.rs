@@ -5,9 +5,9 @@ use crate::{none_ty, Net};
 /// to .net code.
 pub unsafe trait ToNet: Net + ToNetReturn {
     #[doc(hidden)]
-    const TO_DESC: TypeDesc = TypeDesc {
+    const TO_DESC: &'static TypeDesc = &TypeDesc {
         marshal_out: Some(Self::gen_marshal),
-        ..Self::DESC
+        ..*Self::DESC
     };
     #[doc(hidden)]
     fn into_raw(self) -> Self::Raw;
@@ -42,7 +42,7 @@ unsafe impl<'a, T: ToNet> ToNetArg for T {
 /// `void` cannot be used as a normal type.
 pub unsafe trait ToNetReturn {
     #[doc(hidden)]
-    const RETURN_DESC: TypeDesc;
+    const RETURN_DESC: &'static TypeDesc;
     #[doc(hidden)]
     type RawReturn;
     #[doc(hidden)]
@@ -50,7 +50,7 @@ pub unsafe trait ToNetReturn {
 }
 
 unsafe impl<T: ToNet> ToNetReturn for T {
-    const RETURN_DESC: TypeDesc = T::TO_DESC;
+    const RETURN_DESC: &'static TypeDesc = T::TO_DESC;
     type RawReturn = <Self as Net>::Raw;
     fn to_raw_return(self) -> Self::RawReturn {
         let raw = self.into_raw();
@@ -62,7 +62,7 @@ unsafe impl<T: ToNet> ToNetReturn for T {
 }
 
 unsafe impl ToNetReturn for () {
-    const RETURN_DESC: TypeDesc = TypeDesc {
+    const RETURN_DESC: &'static TypeDesc = &TypeDesc {
         net_ty: none_ty,
         base_ty: none_ty,
         raw_ty: none_ty,

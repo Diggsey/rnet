@@ -19,15 +19,15 @@ use crate::{
 unsafe impl<T: Net> Net for Box<[T]> {
     type Raw = RawSlice;
 
-    fn gen_type() -> Box<str> {
-        format!("List<{}>", T::gen_type()).into()
+    fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("List<{}>", T::gen_type(ctx)).into()
     }
 
-    fn gen_base_type() -> Box<str> {
-        format!("IReadOnlyCollection<{}>", T::gen_type()).into()
+    fn gen_base_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("IReadOnlyCollection<{}>", T::gen_type(ctx)).into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
 }
@@ -48,8 +48,8 @@ unsafe impl<T: FromNet> FromNet for Box<[T]> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
             "_AllocSlice<{}, {}>({}, {}, {}, {} => {})",
-            T::gen_type(),
-            T::gen_raw_type(),
+            T::gen_type(ctx),
+            T::gen_raw_type(ctx),
             arg,
             size_of::<T::Raw>(),
             align_of::<T::Raw>(),
@@ -76,13 +76,13 @@ unsafe impl<T: ToNet> ToNet for Box<[T]> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
             "_FreeSlice<{item}, {}, List<{item}>>({}, {}, {}, {} => {})",
-            T::gen_raw_type(),
+            T::gen_raw_type(ctx),
             arg,
             size_of::<T::Raw>(),
             align_of::<T::Raw>(),
             new_arg,
             T::gen_marshal(ctx, &new_arg),
-            item = T::gen_type(),
+            item = T::gen_type(ctx),
         )
         .into()
     }
@@ -91,11 +91,11 @@ unsafe impl<T: ToNet> ToNet for Box<[T]> {
 unsafe impl Net for Box<str> {
     type Raw = RawSlice;
 
-    fn gen_type() -> Box<str> {
+    fn gen_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "String".into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
 }
@@ -123,11 +123,11 @@ unsafe impl ToNet for Box<str> {
 unsafe impl<T: Net> Net for Box<T> {
     type Raw = RawPtr;
 
-    fn gen_type() -> Box<str> {
-        format!("Nullable<{}>", T::gen_type()).into()
+    fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("Nullable<{}>", T::gen_type(ctx)).into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "IntPtr".into()
     }
 }
@@ -168,11 +168,11 @@ fn int_type_id<T: 'static>() -> u64 {
 unsafe impl<T: Send + Sync + 'static> Net for Arc<T> {
     type Raw = RawOpaqueHandle;
 
-    fn gen_type() -> Box<str> {
+    fn gen_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_OpaqueHandle".into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawOpaqueHandle".into()
     }
 }
@@ -209,12 +209,12 @@ unsafe impl<T: Send + Sync + 'static> ToNet for Arc<T> {
 unsafe impl<T: Net> Net for Option<T> {
     type Raw = RawTuple2<T::Raw, bool>;
 
-    fn gen_type() -> Box<str> {
-        format!("Nullable<{}>", T::gen_type()).into()
+    fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("Nullable<{}>", T::gen_type(ctx)).into()
     }
 
-    fn gen_raw_type() -> Box<str> {
-        format!("_RawTuple<{}, {}>", T::gen_raw_type(), bool::gen_raw_type()).into()
+    fn gen_raw_type(ctx: &mut GeneratorContext) -> Box<str> {
+        <(T, bool)>::gen_raw_type(ctx)
     }
 }
 
@@ -272,14 +272,14 @@ fn marshal_result_out<T: ToNet>(ctx: &mut GeneratorContext, arg: &str) -> Box<st
 }
 
 fn marshal_void_result_out(_ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
-    format!("_DecodeVoidResult({})", arg).into()
+    format!("_DecodeResult({})", arg).into()
 }
 
 unsafe impl<T: ToNet, E: Display> ToNetReturn for Result<T, E> {
-    const RETURN_DESC: TypeDesc = TypeDesc {
-        raw_ty: || Some(format!("_RawTuple<{}, _RawSlice, byte>", T::gen_raw_type()).into()),
+    const RETURN_DESC: &'static TypeDesc = &TypeDesc {
+        raw_ty: |ctx| Some(<(T, String, bool)>::gen_raw_type(ctx)),
         marshal_out: Some(marshal_result_out::<T>),
-        ..T::TO_DESC
+        ..*T::TO_DESC
     };
 
     type RawReturn = RawTuple3<T::Raw, RawSlice, bool>;
@@ -293,10 +293,10 @@ unsafe impl<T: ToNet, E: Display> ToNetReturn for Result<T, E> {
 }
 
 unsafe impl<E: Display> ToNetReturn for Result<(), E> {
-    const RETURN_DESC: TypeDesc = TypeDesc {
+    const RETURN_DESC: &'static TypeDesc = &TypeDesc {
         net_ty: none_ty,
         base_ty: none_ty,
-        raw_ty: || Some("_RawTuple<_RawSlice, byte>".into()),
+        raw_ty: |ctx| Some(<(String, bool)>::gen_raw_type(ctx)),
         marshal_in: None,
         marshal_out: Some(marshal_void_result_out),
     };
@@ -320,10 +320,10 @@ fn marshal_void_result_in(_ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
 }
 
 unsafe impl<T: FromNet> FromNetReturn for Result<T, NetException> {
-    const RETURN_DESC: TypeDesc = TypeDesc {
-        raw_ty: || Some(format!("_RawTuple<{}, _RawSlice, byte>", T::gen_raw_type()).into()),
+    const RETURN_DESC: &'static TypeDesc = &TypeDesc {
+        raw_ty: |ctx| Some(<(T, String, bool)>::gen_raw_type(ctx)),
         marshal_in: Some(marshal_result_in::<T>),
-        ..T::FROM_DESC
+        ..*T::FROM_DESC
     };
     type RawReturn = RawTuple3<T::Raw, RawSlice, bool>;
     unsafe fn from_raw_return(arg: Self::RawReturn) -> Self {
@@ -336,10 +336,10 @@ unsafe impl<T: FromNet> FromNetReturn for Result<T, NetException> {
 }
 
 unsafe impl FromNetReturn for Result<(), NetException> {
-    const RETURN_DESC: TypeDesc = TypeDesc {
+    const RETURN_DESC: &'static TypeDesc = &TypeDesc {
         net_ty: none_ty,
         base_ty: none_ty,
-        raw_ty: || Some("_RawTuple<_RawSlice, byte>".into()),
+        raw_ty: |ctx| Some(<(String, bool)>::gen_raw_type(ctx)),
         marshal_in: Some(marshal_void_result_in),
         marshal_out: None,
     };
@@ -356,15 +356,20 @@ unsafe impl FromNetReturn for Result<(), NetException> {
 unsafe impl<K: Net + Eq + Hash, V: Net> Net for HashMap<K, V> {
     type Raw = RawSlice;
 
-    fn gen_type() -> Box<str> {
-        format!("Dictionary<{},{}>", K::gen_type(), V::gen_type()).into()
+    fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("Dictionary<{},{}>", K::gen_type(ctx), V::gen_type(ctx)).into()
     }
 
-    fn gen_base_type() -> Box<str> {
-        format!("IReadOnlyDictionary<{}, {}>", K::gen_type(), V::gen_type()).into()
+    fn gen_base_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!(
+            "IReadOnlyDictionary<{}, {}>",
+            K::gen_type(ctx),
+            V::gen_type(ctx)
+        )
+        .into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
 }
@@ -384,11 +389,10 @@ unsafe impl<K: FromNet + Eq + Hash, V: FromNet> FromNet for HashMap<K, V> {
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
-            "_AllocDict<{}, {}, {}, {}>({}, {}, {}, {} => {})",
-            K::gen_type(),
-            V::gen_type(),
-            K::gen_raw_type(),
-            V::gen_raw_type(),
+            "_AllocDict<{}, {}, {}>({}, {}, {}, {} => {})",
+            K::gen_type(ctx),
+            V::gen_type(ctx),
+            <(K, V)>::gen_raw_type(ctx),
             arg,
             size_of::<<(K, V) as Net>::Raw>(),
             align_of::<<(K, V) as Net>::Raw>(),
@@ -413,16 +417,15 @@ unsafe impl<K: ToNet + Eq + Hash, V: ToNet> ToNet for HashMap<K, V> {
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
-            "_FreeDict<{key}, {value}, {}, {}, Dictionary<{key}, {value}>>({}, {}, {}, {} => {})",
-            K::gen_raw_type(),
-            V::gen_raw_type(),
+            "_FreeDict<{key}, {value}, {}, Dictionary<{key}, {value}>>({}, {}, {}, {} => {})",
+            <(K, V)>::gen_raw_type(ctx),
             arg,
             size_of::<<(K, V) as Net>::Raw>(),
             align_of::<<(K, V) as Net>::Raw>(),
             new_arg,
             <(K, V)>::gen_marshal(ctx, &new_arg),
-            key = K::gen_type(),
-            value = V::gen_type(),
+            key = K::gen_type(ctx),
+            value = V::gen_type(ctx),
         )
         .into()
     }
@@ -431,15 +434,25 @@ unsafe impl<K: ToNet + Eq + Hash, V: ToNet> ToNet for HashMap<K, V> {
 unsafe impl<K: Net + Ord, V: Net> Net for BTreeMap<K, V> {
     type Raw = RawSlice;
 
-    fn gen_type() -> Box<str> {
-        format!("SortedDictionary<{},{}>", K::gen_type(), V::gen_type()).into()
+    fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!(
+            "SortedDictionary<{},{}>",
+            K::gen_type(ctx),
+            V::gen_type(ctx)
+        )
+        .into()
     }
 
-    fn gen_base_type() -> Box<str> {
-        format!("IReadOnlyDictionary<{}, {}>", K::gen_type(), V::gen_type()).into()
+    fn gen_base_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!(
+            "IReadOnlyDictionary<{}, {}>",
+            K::gen_type(ctx),
+            V::gen_type(ctx)
+        )
+        .into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
 }
@@ -459,11 +472,10 @@ unsafe impl<K: FromNet + Ord, V: FromNet> FromNet for BTreeMap<K, V> {
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
-            "_AllocDict<{}, {}, {}, {}>({}, {}, {}, {} => {})",
-            K::gen_type(),
-            V::gen_type(),
-            K::gen_raw_type(),
-            V::gen_raw_type(),
+            "_AllocDict<{}, {}, {}>({}, {}, {}, {} => {})",
+            K::gen_type(ctx),
+            V::gen_type(ctx),
+            <(K, V)>::gen_raw_type(ctx),
             arg,
             size_of::<<(K, V) as Net>::Raw>(),
             align_of::<<(K, V) as Net>::Raw>(),
@@ -488,16 +500,15 @@ unsafe impl<K: ToNet + Ord, V: ToNet> ToNet for BTreeMap<K, V> {
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
-            "_FreeDict<{key}, {value}, {}, {}, SortedDictionary<{key}, {value}>>({}, {}, {}, {} => {})",
-            K::gen_raw_type(),
-            V::gen_raw_type(),
+            "_FreeDict<{key}, {value}, {}, SortedDictionary<{key}, {value}>>({}, {}, {}, {} => {})",
+            <(K, V)>::gen_raw_type(ctx),
             arg,
             size_of::<<(K, V) as Net>::Raw>(),
             align_of::<<(K, V) as Net>::Raw>(),
             new_arg,
             <(K, V)>::gen_marshal(ctx, &new_arg),
-            key = K::gen_type(),
-            value = V::gen_type(),
+            key = K::gen_type(ctx),
+            value = V::gen_type(ctx),
         )
         .into()
     }
@@ -506,15 +517,15 @@ unsafe impl<K: ToNet + Ord, V: ToNet> ToNet for BTreeMap<K, V> {
 unsafe impl<T: Net + Eq + Hash> Net for HashSet<T> {
     type Raw = RawSlice;
 
-    fn gen_type() -> Box<str> {
-        format!("HashSet<{}>", T::gen_type()).into()
+    fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("HashSet<{}>", T::gen_type(ctx)).into()
     }
 
-    fn gen_base_type() -> Box<str> {
-        format!("IReadOnlyCollection<{}>", T::gen_type()).into()
+    fn gen_base_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("IReadOnlyCollection<{}>", T::gen_type(ctx)).into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
 }
@@ -530,8 +541,8 @@ unsafe impl<T: FromNet + Eq + Hash> FromNet for HashSet<T> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
             "_AllocSlice<{}, {}>({}, {}, {}, {} => {})",
-            T::gen_type(),
-            T::gen_raw_type(),
+            T::gen_type(ctx),
+            T::gen_raw_type(ctx),
             arg,
             size_of::<T::Raw>(),
             align_of::<T::Raw>(),
@@ -556,13 +567,13 @@ unsafe impl<T: ToNet + Eq + Hash> ToNet for HashSet<T> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
             "_FreeSlice<{item}, {}, HashSet<{item}>>({}, {}, {}, {} => {})",
-            T::gen_raw_type(),
+            T::gen_raw_type(ctx),
             arg,
             size_of::<T::Raw>(),
             align_of::<T::Raw>(),
             new_arg,
             T::gen_marshal(ctx, &new_arg),
-            item = T::gen_type(),
+            item = T::gen_type(ctx),
         )
         .into()
     }
@@ -571,15 +582,15 @@ unsafe impl<T: ToNet + Eq + Hash> ToNet for HashSet<T> {
 unsafe impl<T: Net + Ord> Net for BTreeSet<T> {
     type Raw = RawSlice;
 
-    fn gen_type() -> Box<str> {
-        format!("SortedSet<{}>", T::gen_type()).into()
+    fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("SortedSet<{}>", T::gen_type(ctx)).into()
     }
 
-    fn gen_base_type() -> Box<str> {
-        format!("IReadOnlyCollection<{}>", T::gen_type()).into()
+    fn gen_base_type(ctx: &mut GeneratorContext) -> Box<str> {
+        format!("IReadOnlyCollection<{}>", T::gen_type(ctx)).into()
     }
 
-    fn gen_raw_type() -> Box<str> {
+    fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
 }
@@ -595,8 +606,8 @@ unsafe impl<T: FromNet + Ord> FromNet for BTreeSet<T> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
             "_AllocSlice<{}, {}>({}, {}, {}, {} => {})",
-            T::gen_type(),
-            T::gen_raw_type(),
+            T::gen_type(ctx),
+            T::gen_raw_type(ctx),
             arg,
             size_of::<T::Raw>(),
             align_of::<T::Raw>(),
@@ -621,13 +632,13 @@ unsafe impl<T: ToNet + Ord> ToNet for BTreeSet<T> {
         let new_arg = ctx.get_unique_identifier("_arg");
         format!(
             "_FreeSlice<{item}, {}, SortedSet<{item}>>({}, {}, {}, {} => {})",
-            T::gen_raw_type(),
+            T::gen_raw_type(ctx),
             arg,
             size_of::<T::Raw>(),
             align_of::<T::Raw>(),
             new_arg,
             T::gen_marshal(ctx, &new_arg),
-            item = T::gen_type(),
+            item = T::gen_type(ctx),
         )
         .into()
     }

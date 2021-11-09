@@ -196,90 +196,6 @@ namespace __ClassName__
             public IntPtr drop_fn;
         }
 
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1> where T0 : unmanaged where T1 : unmanaged
-        {
-            public T0 elem0;
-            public T1 elem1;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4, T5>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-            public T5 elem5;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4, T5, T6>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-            public T5 elem5;
-            public T6 elem6;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4, T5, T6, T7>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-            public T5 elem5;
-            public T6 elem6;
-            public T7 elem7;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct _RawTuple<T0, T1, T2, T3, T4, T5, T6, T7, T8>
-        {
-            public T0 elem0;
-            public T1 elem1;
-            public T2 elem2;
-            public T3 elem3;
-            public T4 elem4;
-            public T5 elem5;
-            public T6 elem6;
-            public T7 elem7;
-            public T8 elem8;
-        }
-
         private static IntPtr _AllocBox<T>(T arg, int size, int align)
         {
             if (size > 0) {
@@ -316,14 +232,14 @@ namespace __ClassName__
             return slice;
         }
 
-        private static _RawSlice _AllocDict<TKey, TValue, UKey, UValue>(IReadOnlyDictionary<TKey, TValue> collection, int size, int align, Func<(TKey, TValue), _RawTuple<UKey, UValue>> converter) where UKey: unmanaged where UValue: unmanaged
+        private static _RawSlice _AllocDict<TKey, TValue, U>(IReadOnlyDictionary<TKey, TValue> collection, int size, int align, Func<(TKey, TValue), U> converter) where U: unmanaged
         {
             var count = collection.Count;
             var slice = _RawSlice.Alloc((UIntPtr)count, size, align);
             var ptr = slice.ptr;
             foreach (var item in collection)
             {
-                Marshal.StructureToPtr(converter((item.Key, item.Value)), ptr, false);
+                Marshal.StructureToPtr<U>(converter((item.Key, item.Value)), ptr, false);
                 ptr = (IntPtr)(ptr.ToInt64() + (long)size);
             }
             return slice;
@@ -363,7 +279,7 @@ namespace __ClassName__
             }
         }
 
-        private static TDict _FreeDict<TKey, TValue, UKey, UValue, TDict>(_RawSlice arg, int size, int align, Func<_RawTuple<UKey, UValue>, (TKey, TValue)> converter) where UKey : unmanaged where UValue : unmanaged where TDict: IDictionary<TKey, TValue>, new()
+        private static TDict _FreeDict<TKey, TValue, U, TDict>(_RawSlice arg, int size, int align, Func<U, (TKey, TValue)> converter) where U : unmanaged where TDict: IDictionary<TKey, TValue>, new()
         {
             unsafe
             {
@@ -371,80 +287,12 @@ namespace __ClassName__
                 var ptr = arg.ptr;
                 for (var i = 0; i < (int)arg.len; ++i)
                 {
-                    var item = converter(Marshal.PtrToStructure<_RawTuple<UKey, UValue>>(ptr));
+                    var item = converter(Marshal.PtrToStructure<U>(ptr));
                     res.Add(item.Item1, item.Item2);
                     ptr = (IntPtr)(ptr.ToInt64() + (long)size);
                 }
                 arg.Free(size, align);
                 return res;
-            }
-        }
-
-        private static _RawTuple<U, byte> _EncodeOption<T, U>(T? arg, Func<T, U> converter) where T: struct where U : unmanaged
-        {
-            if (arg.HasValue)
-            {
-                return new _RawTuple<U, byte> { elem0 = converter(arg.Value), elem1 = 1 };
-            } else
-            {
-                return new _RawTuple<U, byte> { elem0 = default(U), elem1 = 0 };
-            }
-        }
-
-        private static T? _DecodeOption<T, U>(_RawTuple<U, byte> arg, Func<U, T> converter) where T : struct where U : unmanaged
-        {
-            if (arg.elem1 != 0)
-            {
-                return converter(arg.elem0);
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        private static _RawTuple<U, _RawSlice, byte> _EncodeResult<U>(Func<U> f) where U : unmanaged
-        {
-            try
-            {
-                var res = f();
-                return new _RawTuple<U, _RawSlice, byte> { elem0 = res, elem1 = default(_RawSlice), elem2 = 1 };
-            } catch (Exception e)
-            {
-                return new _RawTuple<U, _RawSlice, byte> { elem0 = default(U), elem1 = _AllocStr(e.Message), elem2 = 0 };
-            }
-        }
-
-        private static _RawTuple<_RawSlice, byte> _EncodeVoidResult(Action f)
-        {
-            try
-            {
-                f();
-                return new _RawTuple<_RawSlice, byte> { elem0 = default(_RawSlice), elem1 = 1 };
-            }
-            catch (Exception e)
-            {
-                return new _RawTuple<_RawSlice, byte> { elem0 = _AllocStr(e.Message), elem1 = 0 };
-            }
-        }
-
-        private static T _DecodeResult<T, U>(_RawTuple<U, _RawSlice, byte> arg, Func<U, T> converter) where U : unmanaged
-        {
-            if (arg.elem2 != 0)
-            {
-                return converter(arg.elem0);
-            }
-            else
-            {
-                throw new RustException(_FreeStr(arg.elem1));
-            }
-        }
-
-        private static void _DecodeVoidResult(_RawTuple<_RawSlice, byte> arg)
-        {
-            if (arg.elem1 == 0)
-            {
-                throw new RustException(_FreeStr(arg.elem0));
             }
         }
     }

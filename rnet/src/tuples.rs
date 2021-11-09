@@ -13,12 +13,13 @@ macro_rules! define_tuple_impls {
             unsafe impl<$($arg: Net),*> Net for ($($arg,)*) {
                 type Raw = $name<$($arg::Raw),*>;
 
-                fn gen_type() -> Box<str> {
-                    format!(concat!("(", $lit, ")"), $($arg::gen_type()),*).into()
+                fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
+                    format!(concat!("(", $lit, ")"), $($arg::gen_type(ctx)),*).into()
                 }
 
-                fn gen_raw_type() -> Box<str> {
-                    format!(concat!("_RawTuple<", $lit, ">"), $($arg::gen_raw_type()),*).into()
+                fn gen_raw_type(ctx: &mut GeneratorContext) -> Box<str> {
+                    let tuple_args = [$($arg::gen_raw_type(ctx)),*];
+                    ctx.add_tuple(&tuple_args)
                 }
             }
 
@@ -28,12 +29,12 @@ macro_rules! define_tuple_impls {
                 }
 
                 fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
-                    let raw_ty = Self::gen_raw_type();
+                    let raw_ty = Self::gen_raw_type(ctx);
                     let new_arg = ctx.get_unique_identifier("_arg");
                     let arg_marshal = format!($lit $(, format!("elem{} = {}", $n, $arg::gen_marshal(ctx, &format!("{}.Item{}", new_arg, $n + 1))))*);
                     format!(
                         "((Func<{}, {raw_ty}>)({} => new {raw_ty} {{ {} }}))({})",
-                        Self::gen_type(),
+                        Self::gen_type(ctx),
                         new_arg,
                         arg_marshal,
                         arg,
@@ -54,8 +55,8 @@ macro_rules! define_tuple_impls {
                         concat!(
                             "((Func<{}, {}>)({} => (", $lit, ")))({})"
                         ),
-                        Self::gen_raw_type(),
-                        Self::gen_type(),
+                        Self::gen_raw_type(ctx),
+                        Self::gen_type(ctx),
                         new_arg,
                         $($arg::gen_marshal(ctx, &format!(concat!("{}.elem", stringify!($n)), new_arg)),)*
                         arg,
