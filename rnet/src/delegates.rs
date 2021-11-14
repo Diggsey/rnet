@@ -31,6 +31,9 @@ impl Drop for Delegate {
     }
 }
 
+unsafe impl Send for Delegate {}
+unsafe impl Sync for Delegate {}
+
 macro_rules! define_delegates {
     ($(
         $name:ident<$($arg:ident),*> ($($argname:ident),*) = $lit:literal,
@@ -72,6 +75,10 @@ macro_rules! define_delegates {
 
                 fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
                     "_RawDelegate".into()
+                }
+
+                fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+                    true
                 }
             }
             unsafe impl<TR: FromNetReturn $(, $arg: ToNet)*> FromNet for $name<TR $(, $arg)*> {

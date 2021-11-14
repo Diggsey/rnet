@@ -12,3 +12,5 @@ description = "Easily call into Rust from C# or other .net langauges."
 [dependencies]
 linkme = "0.2.7"
 rnet-macros = { version = "0.1.0", path = "../rnet-macros" }
+uuid = { version = "0.8.2", optional = true }
+chrono = { version = "0.4.19", optional = true }

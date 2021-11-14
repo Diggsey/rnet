@@ -21,6 +21,10 @@ macro_rules! define_tuple_impls {
                     let tuple_args = [$($arg::gen_raw_type(ctx)),*];
                     ctx.add_tuple(&tuple_args)
                 }
+
+                fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+                    false
+                }
             }
 
             unsafe impl<$($arg: FromNet),*> FromNet for ($($arg,)*) {

@@ -30,6 +30,10 @@ unsafe impl<T: Net> Net for Box<[T]> {
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
+    }
 }
 
 unsafe impl<T: FromNet> FromNet for Box<[T]> {
@@ -92,11 +96,15 @@ unsafe impl Net for Box<str> {
     type Raw = RawSlice;
 
     fn gen_type(_ctx: &mut GeneratorContext) -> Box<str> {
-        "String".into()
+        "string".into()
     }
 
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
+    }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
     }
 }
 
@@ -124,11 +132,19 @@ unsafe impl<T: Net> Net for Box<T> {
     type Raw = RawPtr;
 
     fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
-        format!("Nullable<{}>", T::gen_type(ctx)).into()
+        if T::is_nullable(ctx) {
+            T::gen_type(ctx)
+        } else {
+            format!("Nullable<{}>", T::gen_type(ctx)).into()
+        }
     }
 
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "IntPtr".into()
+    }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
     }
 }
 
@@ -169,11 +185,15 @@ unsafe impl<T: Send + Sync + 'static> Net for Arc<T> {
     type Raw = RawOpaqueHandle;
 
     fn gen_type(_ctx: &mut GeneratorContext) -> Box<str> {
-        "_OpaqueHandle".into()
+        "IOpaqueHandle".into()
     }
 
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawOpaqueHandle".into()
+    }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
     }
 }
 
@@ -184,7 +204,7 @@ unsafe impl<T: Send + Sync + 'static> FromNet for Arc<T> {
     }
 
     fn gen_marshal(_ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
-        format!("({}).ToInner({})", arg, int_type_id::<T>()).into()
+        format!("((_OpaqueHandle)({})).ToInner({})", arg, int_type_id::<T>()).into()
     }
 }
 
@@ -210,11 +230,19 @@ unsafe impl<T: Net> Net for Option<T> {
     type Raw = RawTuple2<T::Raw, bool>;
 
     fn gen_type(ctx: &mut GeneratorContext) -> Box<str> {
-        format!("Nullable<{}>", T::gen_type(ctx)).into()
+        if T::is_nullable(ctx) {
+            T::gen_type(ctx)
+        } else {
+            format!("Nullable<{}>", T::gen_type(ctx)).into()
+        }
     }
 
     fn gen_raw_type(ctx: &mut GeneratorContext) -> Box<str> {
         <(T, bool)>::gen_raw_type(ctx)
+    }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
     }
 }
 
@@ -229,13 +257,23 @@ unsafe impl<T: FromNet> FromNet for Option<T> {
 
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
         let new_arg = ctx.get_unique_identifier("_arg");
-        format!(
-            "_EncodeOption({}, {} => {})",
-            arg,
-            new_arg,
-            T::gen_marshal(ctx, &new_arg),
-        )
-        .into()
+        if T::is_nullable(ctx) {
+            format!(
+                "_EncodeOption({}, {} => {})",
+                arg,
+                new_arg,
+                T::gen_marshal(ctx, &new_arg),
+            )
+            .into()
+        } else {
+            format!(
+                "_EncodeOption({}, {} => {})",
+                arg,
+                new_arg,
+                T::gen_marshal(ctx, &format!("{}.Value", new_arg)),
+            )
+            .into()
+        }
     }
 }
 
@@ -250,13 +288,24 @@ unsafe impl<T: ToNet> ToNet for Option<T> {
 
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str> {
         let new_arg = ctx.get_unique_identifier("_arg");
-        format!(
-            "_DecodeOption({}, {} => {})",
-            arg,
-            new_arg,
-            T::gen_marshal(ctx, &new_arg)
-        )
-        .into()
+        if T::is_nullable(ctx) {
+            format!(
+                "_DecodeOption({}, {} => {})",
+                arg,
+                new_arg,
+                T::gen_marshal(ctx, &new_arg)
+            )
+            .into()
+        } else {
+            format!(
+                "_DecodeOption({}, {} => new Nullable<{}>({}))",
+                arg,
+                new_arg,
+                T::gen_type(ctx),
+                T::gen_marshal(ctx, &new_arg)
+            )
+            .into()
+        }
     }
 }
 
@@ -372,6 +421,10 @@ unsafe impl<K: Net + Eq + Hash, V: Net> Net for HashMap<K, V> {
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
+    }
 }
 
 unsafe impl<K: FromNet + Eq + Hash, V: FromNet> FromNet for HashMap<K, V> {
@@ -455,6 +508,10 @@ unsafe impl<K: Net + Ord, V: Net> Net for BTreeMap<K, V> {
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
+    }
 }
 
 unsafe impl<K: FromNet + Ord, V: FromNet> FromNet for BTreeMap<K, V> {
@@ -528,6 +585,10 @@ unsafe impl<T: Net + Eq + Hash> Net for HashSet<T> {
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
     }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
+    }
 }
 
 unsafe impl<T: FromNet + Eq + Hash> FromNet for HashSet<T> {
@@ -592,6 +653,10 @@ unsafe impl<T: Net + Ord> Net for BTreeSet<T> {
 
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "_RawSlice".into()
+    }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        true
     }
 }
 

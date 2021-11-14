@@ -241,11 +241,15 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
 
         // Generate helpers for tuple
         if let [x, "byte"] = *k.as_slice() {
-            writeln!(writer, "        private static {} _EncodeOption<T>(T? arg, Func<T, {}> converter) where T: struct {{", v, x)?;
-            writeln!(writer, "            if (arg.HasValue) {{")?;
             writeln!(
                 writer,
-                "                return new {} {{ elem0 = converter(arg.Value), elem1 = 1 }};",
+                "        private static {} _EncodeOption<T>(T arg, Func<T, {}> converter) {{",
+                v, x
+            )?;
+            writeln!(writer, "            if (arg != null) {{")?;
+            writeln!(
+                writer,
+                "                return new {} {{ elem0 = converter(arg), elem1 = 1 }};",
                 v
             )?;
             writeln!(writer, "            }} else {{")?;
@@ -256,11 +260,15 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
             )?;
             writeln!(writer, "            }}")?;
             writeln!(writer, "        }}")?;
-            writeln!(writer, "        private static T? _DecodeOption<T>({} arg, Func<{}, T> converter) where T: struct {{", v, x)?;
+            writeln!(
+                writer,
+                "        private static T _DecodeOption<T>({} arg, Func<{}, T> converter) {{",
+                v, x
+            )?;
             writeln!(writer, "            if (arg.elem1 != 0) {{")?;
             writeln!(writer, "                return converter(arg.elem0);")?;
             writeln!(writer, "            }} else {{")?;
-            writeln!(writer, "                return null;")?;
+            writeln!(writer, "                return default(T);")?;
             writeln!(writer, "            }}")?;
             writeln!(writer, "        }}")?;
         }

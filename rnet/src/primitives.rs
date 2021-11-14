@@ -15,6 +15,10 @@ macro_rules! define_primitives {
                 fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
                     $b.into()
                 }
+
+                fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+                    false
+                }
             }
 
             unsafe impl FromNet for $a {
@@ -64,6 +68,10 @@ unsafe impl Net for bool {
 
     fn gen_raw_type(_ctx: &mut GeneratorContext) -> Box<str> {
         "byte".into()
+    }
+
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool {
+        false
     }
 }
 

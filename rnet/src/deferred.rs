@@ -1,3 +1,4 @@
+use std::ops::Range;
 use std::path::PathBuf;
 
 use crate::types::GeneratorContext;
@@ -22,6 +23,10 @@ macro_rules! defer_net {
 
             fn gen_raw_type(ctx: &mut GeneratorContext) -> Box<str> {
                 <$b as Net>::gen_raw_type(ctx)
+            }
+
+            fn is_nullable(ctx: &mut GeneratorContext) -> bool {
+                <$b as Net>::is_nullable(ctx)
             }
         }
         unsafe impl $($generics_from)* FromNet for $a {
@@ -75,5 +80,9 @@ defer_net! {
     [<T: Net>] Vec<T>: Box<[T]> => {
         [<T: FromNet>] from: |x| x.into_vec(),
         [<T: ToNet>] to: |x| x.into_boxed_slice(),
+    },
+    [<T: Net>] Range<T>: (T, T) => {
+        [<T: FromNet>] from: |x| x.0..x.1,
+        [<T: ToNet>] to: |x| (x.start, x.end),
     },
 }

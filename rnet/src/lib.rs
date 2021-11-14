@@ -35,6 +35,11 @@ mod std_impls;
 mod to_net;
 mod tuples;
 mod types;
+#[cfg(feature = "uuid")]
+mod uuid_impls;
+#[cfg(feature = "chrono")]
+mod chrono_impls;
+
 pub use delegates::*;
 pub use from_net::{FromNet, FromNetArg, FromNetReturn};
 pub use to_net::{ToNet, ToNetArg, ToNetReturn};
@@ -66,6 +71,8 @@ pub unsafe trait Net: 'static {
     }
     #[doc(hidden)]
     fn gen_raw_type(ctx: &mut GeneratorContext) -> Box<str>;
+    #[doc(hidden)]
+    fn is_nullable(_ctx: &mut GeneratorContext) -> bool;
 }
 
 /// This error type can be used to capture exceptions from

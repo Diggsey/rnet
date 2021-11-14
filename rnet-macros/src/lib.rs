@@ -249,6 +249,10 @@ fn derive_net_struct_impl(
                 fn gen_raw_type(_ctx: &mut #root::GeneratorContext) -> Box<str> {
                     #raw_name_str.into()
                 }
+
+                fn is_nullable(_ctx: &mut #root::GeneratorContext) -> bool {
+                    true
+                }
             }
 
             unsafe impl #root::FromNet for #name {
