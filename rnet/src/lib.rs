@@ -27,6 +27,8 @@ pub use rnet_macros::{net, Net};
 use types::TypeDesc;
 
 mod borrowed;
+#[cfg(feature = "chrono")]
+mod chrono_impls;
 mod deferred;
 mod delegates;
 mod from_net;
@@ -37,8 +39,6 @@ mod tuples;
 mod types;
 #[cfg(feature = "uuid")]
 mod uuid_impls;
-#[cfg(feature = "chrono")]
-mod chrono_impls;
 
 pub use delegates::*;
 pub use from_net::{FromNet, FromNetArg, FromNetReturn};
