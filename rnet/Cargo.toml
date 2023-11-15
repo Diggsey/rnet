@@ -14,3 +14,4 @@ linkme = "0.2.7"
 rnet-macros = { version = "0.3.0", path = "../rnet-macros" }
 uuid = { version = "0.8.2", optional = true }
 chrono = { version = "0.4.19", optional = true }
+rustversion = "1.0.14"

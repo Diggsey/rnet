@@ -28,10 +28,18 @@ impl Default for RawSlice {
 
 #[derive(Copy, Clone)]
 #[repr(C)]
+#[rustversion::since(1.72)]
 pub struct RawOpaqueHandle {
     pub ptr: *mut (),
     pub drop_fn: Option<unsafe extern "C" fn(ptr: *mut ())>,
     pub type_id: u128,
+}
+
+#[rustversion::before(1.72)]
+pub struct RawOpaqueHandle {
+    pub ptr: *mut (),
+    pub drop_fn: Option<unsafe extern "C" fn(ptr: *mut ())>,
+    pub type_id: u64,
 }
 
 impl Default for RawOpaqueHandle {

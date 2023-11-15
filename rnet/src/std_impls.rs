@@ -177,7 +177,13 @@ unsafe impl<T: ToNet> ToNet for Box<T> {
     }
 }
 
+#[rustversion::since(1.72)]
 fn int_type_id<T: 'static>() -> u128 {
+    unsafe { std::mem::transmute(TypeId::of::<T>()) }
+}
+
+#[rustversion::before(1.72)]
+fn int_type_id<T: 'static>() -> u64 {
     unsafe { std::mem::transmute(TypeId::of::<T>()) }
 }
 
