@@ -31,7 +31,7 @@ impl Default for RawSlice {
 pub struct RawOpaqueHandle {
     pub ptr: *mut (),
     pub drop_fn: Option<unsafe extern "C" fn(ptr: *mut ())>,
-    pub type_id: u64,
+    pub type_id: u128,
 }
 
 impl Default for RawOpaqueHandle {

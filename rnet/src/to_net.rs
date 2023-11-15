@@ -1,6 +1,7 @@
 use crate::types::{GeneratorContext, TypeDesc};
 use crate::{none_ty, Net};
 
+/// # Safety
 /// This trait is implemented for Rust types which can be sent
 /// to .net code.
 pub unsafe trait ToNet: Net + ToNetReturn {
@@ -15,6 +16,7 @@ pub unsafe trait ToNet: Net + ToNetReturn {
     fn gen_marshal(ctx: &mut GeneratorContext, arg: &str) -> Box<str>;
 }
 
+/// # Safety
 /// This trait is implemented for Rust types which can be used as arguments
 /// to .net delegates. This is a superset of types which implement
 /// `ToNet`, and allows passing types with lifetime arguments, like `&str`.
@@ -29,13 +31,18 @@ pub unsafe trait ToNetArg: Sized {
     }
 }
 
-unsafe impl<'a, T: ToNet> ToNetArg for T {
+/// # Safety
+/// This trait is implemented for Rust types which can be used as arguments
+/// to .net delegates. This is a superset of types which implement
+/// `ToNet`, and allows passing types with lifetime arguments, like `&str`.
+unsafe impl<T: ToNet> ToNetArg for T {
     type Owned = Self;
     fn to_owned(self) -> Self::Owned {
         self
     }
 }
 
+/// # Safety
 /// This trait is implemented for Rust types which can be returned from
 /// exported functions. This is a superset of types which implement `ToNet`,
 /// and allows returning eg. the unit `()` type, whose .net equivalent
@@ -49,6 +56,11 @@ pub unsafe trait ToNetReturn {
     fn to_raw_return(self) -> Self::RawReturn;
 }
 
+/// # Safety
+/// This trait is implemented for Rust types which can be returned from
+/// exported functions. This is a superset of types which implement `ToNet`,
+/// and allows returning eg. the unit `()` type, whose .net equivalent
+/// `void` cannot be used as a normal type.
 unsafe impl<T: ToNet> ToNetReturn for T {
     const RETURN_DESC: &'static TypeDesc = T::TO_DESC;
     type RawReturn = <Self as Net>::Raw;

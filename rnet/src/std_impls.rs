@@ -177,7 +177,7 @@ unsafe impl<T: ToNet> ToNet for Box<T> {
     }
 }
 
-fn int_type_id<T: 'static>() -> u64 {
+fn int_type_id<T: 'static>() -> u128 {
     unsafe { std::mem::transmute(TypeId::of::<T>()) }
 }
 

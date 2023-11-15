@@ -48,6 +48,7 @@ fn none_ty(_ctx: &mut GeneratorContext) -> Option<Box<str>> {
     None
 }
 
+/// # Safety
 /// This trait is implemented for Rust types which have
 /// an equivalent type within .net.
 pub unsafe trait Net: 'static {

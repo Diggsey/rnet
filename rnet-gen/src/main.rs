@@ -32,9 +32,8 @@ fn generate_csharp_code(_opt: &Opt, name: &str, desc: LibDesc) -> anyhow::Result
     let common = COMMON
         .replace("__ClassName__", &name.to_camel_case())
         .replace("\"__LibName__\"", &format!("{:?}", name));
-    let mut parts = common.splitn(2, "// __Remainder__");
-    let prefix = parts.next().unwrap();
-    let suffix = parts.next().unwrap();
+
+    let (prefix, suffix) = common.split_once("// __Remainder__").unwrap();
 
     let mut extra_items = Vec::new();
     let mut used_tuple_keys = HashMap::new();

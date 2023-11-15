@@ -4,6 +4,7 @@ use crate::{
     Net,
 };
 
+/// # Safety
 /// This trait is implemented for Rust types which can be received
 /// from .net code.
 pub unsafe trait FromNet: Net + for<'a> FromNetArg<'a> {
@@ -18,6 +19,7 @@ pub unsafe trait FromNet: Net + for<'a> FromNetArg<'a> {
     unsafe fn from_raw(arg: Self::Raw) -> Self;
 }
 
+/// # Safety
 /// This trait is implemented for Rust types which can be used as arguments
 /// to exported functions. This is a superset of types which implement
 /// `FromNet`, and allows passing types with lifetime arguments, like `&str`.
@@ -37,6 +39,7 @@ unsafe impl<'a, T: FromNet> FromNetArg<'a> for T {
     }
 }
 
+/// # Safety
 /// This trait is implemented for Rust types which can be returned from
 /// .net delegates. This is a superset of types which implement `FromNet`,
 /// and allows returning eg. the unit `()` type, whose .net equivalent

@@ -120,7 +120,7 @@ fn net_impl(attr: TokenStream, item: TokenStream) -> Result<TokenStream2> {
         lifetime: Lifetime::new("'net", Span::call_site()),
     };
     let local_arg_types = arg_types.iter().cloned().map(|mut arg| {
-        lifetime_injector.visit_type_mut(&mut *arg);
+        lifetime_injector.visit_type_mut(&mut arg);
         arg
     });
 
