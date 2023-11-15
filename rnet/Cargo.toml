@@ -1,6 +1,6 @@
 [package]
 name = "rnet"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 readme = "../README.md"
 license = "MIT OR Apache-2.0"
@@ -11,6 +11,6 @@ description = "Easily call into Rust from C# or other .net langauges."
 
 [dependencies]
 linkme = "0.2.7"
-rnet-macros = { version = "0.2.0", path = "../rnet-macros" }
+rnet-macros = { version = "0.3.0", path = "../rnet-macros" }
 uuid = { version = "0.8.2", optional = true }
 chrono = { version = "0.4.19", optional = true }
