@@ -1,6 +1,6 @@
 [package]
 name = "rnet-example"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,5 +8,5 @@ edition = "2018"
 crate-type = ["cdylib"]
 
 [dependencies]
-rnet = { version = "0.3.0", path = "../rnet" }
+rnet = { version = "0.3.1", path = "../rnet" }
 linkme = "0.2.7"
